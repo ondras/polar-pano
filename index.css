@@ -52,3 +52,10 @@ label {
 		max-width: 80vh;
 	}
 }
+
+footer {
+	margin-top: 0.67em;
+	padding-top: 0.67em;
+	font-size: 75%;
+	border-top: 1px solid gray;
+}
