@@ -1,0 +1,50 @@
+<!doctype html>
+<html>
+	<head>
+		<meta charset="utf-8" />
+		<meta name="viewport" content="width=device-width" />
+		<link rel="stylesheet" href="index.css" />
+	</head>
+	<body>
+		<h1>Polar Panorama Creator</h1>
+		<section id="source">
+			<h2>Choose an image</h2>
+			<p>In equirectangular projection, max width 8192, max height 4096, ideal aspect ratio 2:1</p>
+			<input type="file" accept="image/*" />
+			<img alt="Source image preview" />
+		</section>
+		<section id="options">
+			<h2>Make optional adjustments</h2>
+			<form>
+				<label>
+					Filtering:
+					<select name="filter">
+						<option value="nearest">gl.NEAREST</option>
+						<option value="linear" selected>gl.LINEAR</option>
+						<option value="nearest-mipmap-nearest">gl.NEAREST_MIPMAP_NEAREST</option>
+						<option value="nearest-mipmap-linear">gl.NEAREST_MIPMAP_LINEAR</option>
+						<option value="linear-mipmap-nearest">gl.LINEAR_MIPMAP_NEAREST</option>
+						<option value="linear-mipmap-linear">gl.LINEAR_MIPMAP_LINEAR</option>
+					</select>
+				</label>
+				<label>
+					Scale:
+					<select name="scale">
+						<option value="linear">linear</option>
+						<option value="atan" selected>atan</option>
+						<option value="tan">tan</option>
+						<option value="pow1.2">pow(1.2)</option>
+						<option value="pow1.5">pow(1.5)</option>
+					</select>
+				</label>
+			</form>
+		</section>
+		<section id="target">
+			<h2>Result</h2>
+			<p>Right-click to save the full-resolution image</p>
+		</section>
+
+		<script type="module" src="index.js"></script>
+	</body>
+</html>
+
