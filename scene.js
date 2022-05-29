@@ -1,6 +1,9 @@
 import Program from "./webgl-program.js";
 import { VS, FS } from "./shaders.js";
 
+
+const RAD = Math.PI / 180;
+
 function getScale(scale) {
 	switch (scale) {
 		case "linear": return "";
@@ -53,34 +56,56 @@ function createTextures(img, options, gl) {
 	createTexture(tmp, filter, gl);
 }
 
-export function process(image, options) {
-	console.log("process", options)
+export default class PanoScene extends HTMLElement {
+	constructor(image, options) {
+		console.log("PanoScene", options);
+		super();
 
-	const canvas = document.createElement("canvas");
-	canvas.width = canvas.height = 2*image.naturalHeight;
+		const canvas = document.createElement("canvas");
+		canvas.width = canvas.height = 2*image.naturalHeight;
+//		canvas.height *= 0.5;
 
-	const gl = canvas.getContext("webgl2", {preserveDrawingBuffer: true}); // to allow canvas save-as
+		const gl = canvas.getContext("webgl2", {preserveDrawingBuffer: true}); // to allow canvas save-as
+		this.gl = gl;
 
-	let vs = VS;
-	let fs = FS.replace("{scale}", getScale(options.scale));
-	let program = new Program(gl, {vs, fs});
-	program.use();
+		let vs = VS;
+		let fs = FS.replace("{scale}", getScale(options.scale));
+		let program = new Program(gl, {vs, fs});
+		program.use();
+		this.program = program;
 
-	let buffer = gl.createBuffer();
-	gl.bindBuffer(gl.ARRAY_BUFFER, buffer);
-	gl.bufferData(gl.ARRAY_BUFFER, QUAD, gl.STATIC_DRAW);
+		let buffer = gl.createBuffer();
+		gl.bindBuffer(gl.ARRAY_BUFFER, buffer);
+		gl.bufferData(gl.ARRAY_BUFFER, QUAD, gl.STATIC_DRAW);
 
-	createTextures(image, options, gl);
+		createTextures(image, options, gl);
 
-	Object.values(program.attribute).forEach(a => a.enable());
-	program.attribute.position.pointer(2, gl.FLOAT, false, 0, 0);
-	program.uniform.texLeft.set(0);
-	program.uniform.texRight.set(1);
-	program.uniform.port.set([canvas.width, canvas.height]);
+		Object.values(program.attribute).forEach(a => a.enable());
+		program.attribute.position.pointer(2, gl.FLOAT, false, 0, 0);
+		program.uniform.texLeft.set(0);
+		program.uniform.texRight.set(1);
+		program.uniform.port.set([canvas.width, canvas.height]);
 
-	gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+		this.append(canvas);
+		this.#render(options);
+	}
 
-	return canvas;
+	set camera(options) {
+		this.#render(options);
+	}
+
+	#render(options) {
+		const { gl, program } = this;
+		console.log("render", options);
+
+		program.uniform.hfov.set(options.hfov * RAD);
+		program.uniform.camera.set([options.cameraX*RAD, options.cameraY*RAD]);
+
+		gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+	}
 }
 
+customElements.define("pano-scene", PanoScene);
+
 const QUAD = new Float32Array([1, -1, -1, -1, 1, 1, -1, 1]);
+
