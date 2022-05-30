@@ -14,24 +14,19 @@ uniform sampler2D texLeft, texRight;
 uniform vec2 port;
 uniform float hfov;
 uniform vec2 camera;
+uniform float height;
 out vec4 FragColor;
 
 vec4 textureLookup(vec2 lonlat) {
-	lonlat.x = mod(lonlat.x + PI, 2.*PI) - PI;
+//	lonlat.x = mod(lonlat.x + PI, 2.*PI) - PI;
 //	lonlat.y = clamp(lonlat.y, -PI/2., PI/2.);
 
-	vec2 uv;
-	uv.y = 1. - (lonlat.y/PI + 0.5);
+	vec2 uv = vec2(lonlat.x / PI, 1. - (lonlat.y/PI + 0.5));
 
 	if (lonlat.x < 0.) {
-		uv.x = (lonlat.x + PI) / PI;
-		float onePxUv = 1.0 / float(textureSize(texLeft, 0).x);
-		uv.x -= onePxUv;
+		uv.x += 1.0;
 		return texture(texLeft, uv);
 	} else {
-		uv.x = lonlat.x / PI;
-		float onePxUv = 1.0 / float(textureSize(texRight, 0).x);
-		uv.x += onePxUv;
 		return texture(texRight, uv);
 	}
 }
@@ -45,7 +40,7 @@ vec2 rect_to_polar(vec2 fragCoord) {
 	{scale};
 
 	vec2 lonlat;
-	lonlat.x = -atan(px.y, px.x) + PI/2.;
+	lonlat.x = mod(-atan(px.y, px.x) + PI*1.5, 2.*PI) - PI;
 	lonlat.y = (dist - 0.5)*PI;
 
 	return lonlat;
@@ -87,7 +82,7 @@ void main(void) {
 	vec2 lonlat1 = rect_to_polar(gl_FragCoord.xy);
 	vec2 lonlat2 = in_sphere(gl_FragCoord.xy);
 	vec2 lonlat3 = in_sphere_2(gl_FragCoord.xy);
-//	vec2 lonlat = mix(lonlat1, lonlat3, 0.0);
-	FragColor = textureLookup(lonlat1);
+	vec2 lonlat = mix(lonlat1, lonlat3, 1.);
+	FragColor = textureLookup(lonlat);
 }
 `;

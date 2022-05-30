@@ -11,6 +11,7 @@ function getScale(scale) {
 		case "tan": return "dist = tan(dist) / (PI / 2.)";
 		case "pow1.2": return "dist = pow(dist, 1.2)";
 		case "pow1.5": return "dist = pow(dist, 1.5)";
+		case "test1": return "dist = atan(dist) * height";
 		default: throw new Error(`Unknown scale "${scale}"`);
 	}
 }
@@ -58,8 +59,10 @@ function createTextures(img, options, gl) {
 
 export default class PanoScene extends HTMLElement {
 	constructor(image, options) {
-		console.log("PanoScene", options);
+//		console.log("PanoScene", options);
 		super();
+
+		this.options = options;
 
 		const canvas = document.createElement("canvas");
 		canvas.width = canvas.height = 2*image.naturalHeight;
@@ -87,17 +90,29 @@ export default class PanoScene extends HTMLElement {
 		program.uniform.port.set([canvas.width, canvas.height]);
 
 		this.append(canvas);
-		this.#render(options);
+		this.#tick();
+	}
+
+	#tick() {
+		let min = 0.2;
+		let max = 1;
+		let sin = Math.sin(performance.now() / 1000);
+
+		this.options.height = min + (sin+1)/2 * (max - min);
+		this.options.height = 0.5;
+		this.#render();
+		requestAnimationFrame(() => this.#tick());
 	}
 
 	set camera(options) {
-		this.#render(options);
+		Object.assign(this.options, options);
 	}
 
-	#render(options) {
-		const { gl, program } = this;
-		console.log("render", options);
+	#render() {
+		const { gl, program, options } = this;
+//		console.log("render", options);
 
+		program.uniform.height && program.uniform.height.set(options.height);
 		program.uniform.hfov.set(options.hfov * RAD);
 		program.uniform.camera.set([options.cameraX*RAD, options.cameraY*RAD]);
 
