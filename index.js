@@ -1,4 +1,4 @@
-import PanoScene from "./scene.js";
+import PolarPano from "./polar-pano.js";
 
 
 const file = document.querySelector("[type=file]");
@@ -21,8 +21,14 @@ function createScene() {
 	let options = collectOptions();
 
 	[...target.querySelectorAll("pano-scene")].forEach(c => c.remove());
-	scene = new PanoScene(source, options);
+	scene = new PolarPano(options);
 	target.append(scene);
+
+	let size = 2*source.naturalHeight;
+	scene.setAttribute("width", size);
+	scene.setAttribute("height", size);
+	scene.setAttribute("src", source.src);
+
 }
 
 function updateCamera() {

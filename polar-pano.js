@@ -3,6 +3,7 @@ import { VS, FS } from "./shaders.js";
 
 
 const RAD = Math.PI / 180;
+const QUAD = new Float32Array([1, -1, -1, -1, 1, 1, -1, 1]);
 
 function getScale(scale) {
 	switch (scale) {
@@ -57,16 +58,26 @@ function createTextures(img, options, gl) {
 	createTexture(tmp, filter, gl);
 }
 
+function loadImage(src) {
+	return new Promise((resolve, reject) => {
+		let image = new Image();
+		image.src = src;
+		image.onload = e => resolve(e.target);
+		image.onerror = reject;
+	});
+}
+
 export default class PanoScene extends HTMLElement {
-	constructor(image, options) {
-//		console.log("PanoScene", options);
+	static observedAttributes = ["src", "width", "height"];
+
+	constructor(options) {
+		console.log("PanoScene", options);
 		super();
 
 		this.options = options;
 
 		const canvas = document.createElement("canvas");
-		canvas.width = canvas.height = 2*image.naturalHeight;
-//		canvas.height *= 0.5;
+		this.append(canvas);
 
 		const gl = canvas.getContext("webgl2", {preserveDrawingBuffer: true}); // to allow canvas save-as
 		this.gl = gl;
@@ -81,16 +92,36 @@ export default class PanoScene extends HTMLElement {
 		gl.bindBuffer(gl.ARRAY_BUFFER, buffer);
 		gl.bufferData(gl.ARRAY_BUFFER, QUAD, gl.STATIC_DRAW);
 
-		createTextures(image, options, gl);
-
 		Object.values(program.attribute).forEach(a => a.enable());
 		program.attribute.position.pointer(2, gl.FLOAT, false, 0, 0);
 		program.uniform.texLeft.set(0);
 		program.uniform.texRight.set(1);
-		program.uniform.port.set([canvas.width, canvas.height]);
+	}
 
-		this.append(canvas);
-		this.#tick();
+	async attributeChangedCallback(name, oldValue, newValue) {
+		const { gl, program } = this;
+
+		switch (name) {
+			case "width":
+			case "height":
+				gl.canvas.setAttribute(name, newValue);
+				let port = [gl.canvas.width, gl.canvas.height];
+				gl.viewport(0, 0, ...port);
+				program.uniform.port.set(port);
+				this.#tick();
+			break;
+
+			case "src":
+				try {
+					let image = await loadImage(newValue);
+					createTextures(image, this.options, this.gl);
+					this.dispatchEvent(new CustomEvent("load"));
+					this.#tick();
+				} catch (e) {
+					this.dispatchEvent(new CustomEvent("error", {detail:e}));
+				}
+			break;
+		}
 	}
 
 	#tick() {
@@ -120,7 +151,4 @@ export default class PanoScene extends HTMLElement {
 	}
 }
 
-customElements.define("pano-scene", PanoScene);
-
-const QUAD = new Float32Array([1, -1, -1, -1, 1, 1, -1, 1]);
-
+customElements.define("polar-pano", PanoScene);

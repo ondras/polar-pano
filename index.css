@@ -42,13 +42,13 @@ label {
 }
 
 @media (orientation: portrait) {
-	#target canvas {
+	#target polar-pano {
 		max-width: 100%;
 	}
 }
 
 @media (orientation: landscape) {
-	#target canvas {
+	#target polar-pano {
 		max-width: 80vh;
 	}
 }

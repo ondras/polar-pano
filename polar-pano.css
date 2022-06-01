@@ -1,0 +1,9 @@
+polar-pano {
+	display: inline-block;
+}
+
+polar-pano canvas {
+	display: block;
+	width: 100%;
+	height: 100%;
+}
