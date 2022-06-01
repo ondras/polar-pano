@@ -25,10 +25,8 @@ function createScene() {
 	target.append(scene);
 
 	let size = 2*source.naturalHeight;
-	scene.setAttribute("width", size);
-	scene.setAttribute("height", size);
-	scene.setAttribute("src", source.src);
-
+	scene.width = scene.height = size;
+	scene.src = source.src;
 }
 
 function updateCamera() {
