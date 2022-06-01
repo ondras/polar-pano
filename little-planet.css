@@ -1,8 +1,8 @@
-polar-pano {
+little-planet {
 	display: inline-block;
 }
 
-polar-pano canvas {
+little-planet canvas {
 	display: block;
 	width: 100%;
 	height: 100%;

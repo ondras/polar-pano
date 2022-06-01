@@ -1,4 +1,4 @@
-import PolarPano from "./polar-pano.js";
+import LittlePlanet from "./little-planet.js";
 
 
 const file = document.querySelector("[type=file]");
@@ -9,8 +9,7 @@ let scene;
 
 function collectOptions() {
 	return {
-		filter: form.querySelector("[name=filter]").value,
-		scale: form.querySelector("[name=scale]").value,
+		projection: form.querySelector("[name=projection]").value,
 		hfov: target.querySelector("[name=hfov]").valueAsNumber,
 		cameraX: target.querySelector("[name=cameraX]").valueAsNumber,
 		cameraY: target.querySelector("[name=cameraY]").valueAsNumber
@@ -20,13 +19,16 @@ function collectOptions() {
 function createScene() {
 	let options = collectOptions();
 
-	[...target.querySelectorAll("pano-scene")].forEach(c => c.remove());
-	scene = new PolarPano(options);
+	[...target.querySelectorAll("little-planet")].forEach(c => c.remove());
+	scene = new LittlePlanet(options);
 	target.append(scene);
 
 	let size = 2*source.naturalHeight;
 	scene.width = scene.height = size;
 	scene.src = source.src;
+//	scene.projection = options.projection;
+	scene.setAttribute("projection", options.projection);
+	scene.setAttribute("altitude", form.querySelector("[name=altitude]").value);
 }
 
 function updateCamera() {

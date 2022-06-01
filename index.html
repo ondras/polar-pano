@@ -4,7 +4,7 @@
 		<meta charset="utf-8" />
 		<meta name="viewport" content="width=device-width" />
 		<link rel="stylesheet" href="index.css" />
-		<link rel="stylesheet" href="polar-pano.css" />
+		<link rel="stylesheet" href="little-planet.css" />
 	</head>
 	<body>
 		<h1>Polar Panorama Creator</h1>
@@ -18,25 +18,18 @@
 			<h2>Make optional adjustments</h2>
 			<form>
 				<label>
-					Filtering:
-					<select name="filter">
-						<option value="nearest">gl.NEAREST</option>
-						<option value="linear" selected>gl.LINEAR</option>
-						<option value="nearest-mipmap-nearest">gl.NEAREST_MIPMAP_NEAREST</option>
-						<option value="nearest-mipmap-linear">gl.NEAREST_MIPMAP_LINEAR</option>
-						<option value="linear-mipmap-nearest">gl.LINEAR_MIPMAP_NEAREST</option>
-						<option value="linear-mipmap-linear">gl.LINEAR_MIPMAP_LINEAR</option>
+					Projection:
+					<select name="projection">
+						<option value="polar">polar</option>
+						<option value="stereographic">stereographic</option>
 					</select>
 				</label>
 				<label>
-					Scale:
-					<select name="scale">
-						<option value="linear">linear</option>
-						<option value="atan" selected>atan</option>
-						<option value="tan">tan</option>
-						<option value="pow1.2">pow(1.2)</option>
-						<option value="pow1.5">pow(1.5)</option>
-						<option value="test1">test1</option>
+					Altitude:
+					<select name="altitude">
+						<option value="1">1</option>
+						<option value="1.273">4/pi</option>
+						<option value="1.5">1.5</option>
 					</select>
 				</label>
 			</form>

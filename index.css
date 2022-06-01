@@ -42,13 +42,13 @@ label {
 }
 
 @media (orientation: portrait) {
-	#target polar-pano {
+	#target little-planet {
 		max-width: 100%;
 	}
 }
 
 @media (orientation: landscape) {
-	#target polar-pano {
+	#target little-planet {
 		max-width: 80vh;
 	}
 }
