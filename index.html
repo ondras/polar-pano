@@ -38,8 +38,9 @@
 			<h2>Result</h2>
 			<p>Right-click to save the full-resolution image</p>
 			<input name="hfov" type="range" min="2" max="180" value="120" />
-			<input name="cameraX" type="range" min="-180" max="180" value="0" />
-			<input name="cameraY" type="range" min="-90" max="90" value="0" />
+			<input name="lon" type="range" min="-180" max="180" value="0" />
+			<input name="lat" type="range" min="-90" max="90" value="0" />
+			<little-planet></little-planet>
 		</section>
 
 		<footer>
@@ -48,6 +49,7 @@
 
 <!--		<pano-scene width="30"></pano-scene> -->
 
+		<script type="module" src="little-planet.js"></script>
 		<script type="module" src="index.js"></script>
 	</body>
 </html>

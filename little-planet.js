@@ -51,6 +51,8 @@ function createContext(canvas) {
 	Object.values(program.attribute).forEach(a => a.enable());
 	program.uniform.texLeft.set(0);
 	program.uniform.texRight.set(1);
+	program.uniform.hfov.set(120 * RAD);
+	program.uniform.outside_inside_mix.set(1);
 
 	let buffer = gl.createBuffer();
 	gl.bindBuffer(gl.ARRAY_BUFFER, buffer);
@@ -63,11 +65,19 @@ function createContext(canvas) {
 export default class LittlePlanet extends HTMLElement {
 	static observedAttributes = ATTRIBUTES;
 
+	#dirty = false;
+	#loaded = false;
+	#camera = {
+		lat: 0,
+		lon: 0,
+		hfov: 120
+	}
+
 	constructor(options) {
 		super();
 
 		const canvas = document.createElement("canvas");
-		const { gl, program} = createContext(canvas);
+		const { gl, program } = createContext(canvas);
 
 		this.options = options;
 		this.program = program;
@@ -86,52 +96,61 @@ export default class LittlePlanet extends HTMLElement {
 				let port = [gl.canvas.width, gl.canvas.height];
 				gl.viewport(0, 0, ...port);
 				program.uniform.port.set(port);
-				this.#tick();
+				this.#changed();
 			break;
 
 			case "src":
+				this.#loaded = false;
 				try {
 					let image = await loadImage(newValue);
-					createTextures(image, this.gl);
+					createTextures(image, gl);
+					this.#loaded = true;
+					this.#render();
+					console.log("load")
 					this.dispatchEvent(new CustomEvent("load"));
-					this.#tick();
 				} catch (e) {
+					console.log("error", e)
 					this.dispatchEvent(new CustomEvent("error", {detail:e}));
 				}
 			break;
 
 			case "projection":
-				this.#tick();
+			case "altitude":
+				this.#changed();
 			break;
 		}
 	}
 
-	#tick() {
+	get camera() { return this.#camera; }
+	set camera(camera) {
+		Object.assign(this.#camera, camera);
+		this.#changed();
+	}
+
+	#changed() {
+		if (this.#dirty || !this.#loaded) { return; }
+		this.#dirty = true;
+		requestAnimationFrame(() => this.#render());
+	}
+
+	#render() {
+		const { gl, program } = this;
+
 		let min = 0.2;
 		let max = 1;
 		let sin = Math.sin(performance.now() / 1000);
 
-		this.options.altitude = min + (sin+1)/2 * (max - min);
-		this.options.altitude = 0.5;
+//		this.options.altitude = min + (sin+1)/2 * (max - min);
+//		this.options.altitude = 0.5;
 //		this.options.altitude = 4 / Math.PI;
 
 		let uniforms = {
 			altitude: Number(this.getAttribute("altitude")) || 1,
 			is_polar: (this.getAttribute("projection") == "polar"),
-			hfov: this.options.hfov * RAD,
-			camera: [this.options.cameraX*RAD, this.options.cameraY*RAD]
+			hfov: this.#camera.hfov * RAD,
+			camera: [this.#camera.lon*RAD, this.#camera.lat*RAD]
 		}
-		this.#render(uniforms);
-//		requestAnimationFrame(() => this.#tick());
-	}
 
-	set camera(options) {
-		Object.assign(this.options, options);
-		this.#tick();
-	}
-
-	#render(uniforms) {
-		const { gl, program } = this;
 		console.log("render", uniforms);
 
 		for (let name in uniforms) {
@@ -139,6 +158,8 @@ export default class LittlePlanet extends HTMLElement {
 		}
 
 		gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+
+		this.#dirty = false;
 	}
 
 	// dom/attribute reflection

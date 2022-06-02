@@ -16,6 +16,7 @@ uniform float hfov;
 uniform vec2 camera;
 uniform float altitude;
 uniform bool is_polar;
+uniform float outside_inside_mix;
 out vec4 FragColor;
 
 vec4 textureLookup(vec2 lonlat) {
@@ -29,7 +30,7 @@ vec4 textureLookup(vec2 lonlat) {
 	}
 }
 
-vec2 rect_to_polar(vec2 fragCoord) {
+vec2 project_outside(vec2 fragCoord) {
 	vec2 px = fragCoord.xy - (port / 2.);
 
 	float r = min(port.x, port.y) / 2.;
@@ -51,7 +52,7 @@ vec3 rotate_xy(vec3 p, vec2 angle) {
 	return vec3(c.x*p.x + s.x*p.z, p.y, -s.x*p.x + c.x*p.z);
 }
 
-vec2 in_sphere(vec2 fragCoord) {
+vec2 project_inside(vec2 fragCoord) {
 	float vfov = hfov * (port.y / port.x);
 	vec2 fov = vec2(hfov, vfov);
 
@@ -64,9 +65,9 @@ vec2 in_sphere(vec2 fragCoord) {
 }
 
 void main(void) {
-	vec2 lonlat1 = rect_to_polar(gl_FragCoord.xy);
-	vec2 lonlat2 = in_sphere(gl_FragCoord.xy);
-	vec2 lonlat = mix(lonlat1, lonlat2, 0.001);
+	vec2 lonlat_outside = project_outside(gl_FragCoord.xy);
+	vec2 lonlat_inside = project_inside(gl_FragCoord.xy);
+	vec2 lonlat = mix(lonlat_outside, lonlat_inside, outside_inside_mix);
 	FragColor = textureLookup(lonlat);
 }
 `;
