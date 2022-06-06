@@ -13,8 +13,9 @@ function createTexture(src, gl) {
 	gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
 	gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
 	gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+//	gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, true);
 	gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, src);
-	gl.generateMipmap(gl.TEXTURE_2D);
+//	gl.generateMipmap(gl.TEXTURE_2D);
 	return texture;
 }
 
@@ -86,14 +87,16 @@ export default class LittlePlanet extends HTMLElement {
 		this.append(canvas);
 	}
 
+	get canvas() { return this.gl.canvas; }
+
 	async attributeChangedCallback(name, oldValue, newValue) {
-		const { gl, program } = this;
+		const { gl, program, canvas } = this;
 
 		switch (name) {
 			case "width":
 			case "height":
-				gl.canvas.setAttribute(name, newValue);
-				let port = [gl.canvas.width, gl.canvas.height];
+				canvas.setAttribute(name, newValue);
+				let port = [canvas.width, canvas.height];
 				gl.viewport(0, 0, ...port);
 				program.uniform.port.set(port);
 				this.#changed();
@@ -106,10 +109,8 @@ export default class LittlePlanet extends HTMLElement {
 					createTextures(image, gl);
 					this.#loaded = true;
 					this.#render();
-					console.log("load")
 					this.dispatchEvent(new CustomEvent("load"));
 				} catch (e) {
-					console.log("error", e)
 					this.dispatchEvent(new CustomEvent("error", {detail:e}));
 				}
 			break;
@@ -164,10 +165,10 @@ export default class LittlePlanet extends HTMLElement {
 
 	// dom/attribute reflection
 
-	get width() { return this.gl.canvas.getAttribute("width"); }
+	get width() { return this.canvas.getAttribute("width"); }
 	set width(width) { return this.setAttribute("width", width); }
 
-	get height() { return this.gl.canvas.getAttribute("height"); }
+	get height() { return this.canvas.getAttribute("height"); }
 	set height(height) { return this.setAttribute("height", height); }
 
 	get src() { return this.getAttribute("src"); }
