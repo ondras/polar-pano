@@ -4,7 +4,7 @@ import { vs, fs } from "./shaders.js";
 
 const RAD = Math.PI / 180;
 const QUAD = new Float32Array([1, -1, -1, -1, 1, 1, -1, 1]);
-const ATTRIBUTES = ["src", "width", "height", "projection", "altitude"];
+const ATTRIBUTES = ["src", "width", "height"];
 
 function createTexture(src, gl) {
 	let texture = gl.createTexture();
@@ -114,11 +114,6 @@ export default class LittlePlanet extends HTMLElement {
 					this.dispatchEvent(new CustomEvent("error", {detail:e}));
 				}
 			break;
-
-			case "projection":
-			case "altitude":
-				this.#changed();
-			break;
 		}
 	}
 
@@ -141,13 +136,11 @@ export default class LittlePlanet extends HTMLElement {
 		let max = 1;
 		let sin = Math.sin(performance.now() / 1000);
 
-//		this.options.altitude = min + (sin+1)/2 * (max - min);
+//		this.options.3 = min + (sin+1)/2 * (max - min);
 //		this.options.altitude = 0.5;
 //		this.options.altitude = 4 / Math.PI;
 
 		let uniforms = {
-			altitude: Number(this.getAttribute("altitude")) || 1,
-			is_polar: (this.getAttribute("projection") == "polar"),
 			hfov: this.#camera.hfov * RAD,
 			camera: [this.#camera.lon*RAD, this.#camera.lat*RAD]
 		}
@@ -173,12 +166,6 @@ export default class LittlePlanet extends HTMLElement {
 
 	get src() { return this.getAttribute("src"); }
 	set src(src) { return this.setAttribute("src", src); }
-
-	get projection() { return this.getAttribute("projection"); }
-	set projection(projection) { return this.setAttribute("projection", projection); }
-
-	get altitude() { return this.getAttribute("altitude"); }
-	set altitude(altitude) { return this.setAttribute("altitude", altitude); }
 }
 
 customElements.define("little-planet", LittlePlanet);

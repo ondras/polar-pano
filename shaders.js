@@ -14,15 +14,13 @@ uniform sampler2D texLeft, texRight;
 uniform vec2 port;
 uniform float hfov;
 uniform vec2 camera;
-uniform float altitude;
-uniform bool is_polar;
 uniform float outside_inside_mix;
 out vec4 FragColor;
 
-vec4 textureLookup(vec2 polar) {
-	vec2 uv = polar / PI;
+vec4 textureLookup(vec3 spherical) {
+	vec2 uv = (spherical / PI).xy;
 
-	if (polar.x < 0.) {
+	if (spherical.x < 0.) {
 		uv.x += 1.0;
 		return texture(texLeft, uv);
 	} else {
@@ -30,7 +28,7 @@ vec4 textureLookup(vec2 polar) {
 	}
 }
 
-vec3 cartesian_to_polar(vec3 cartesian) {
+vec3 cartesian_to_spherical(vec3 cartesian) {
 	float r = length(cartesian);
 
 	return vec3(
@@ -40,10 +38,10 @@ vec3 cartesian_to_polar(vec3 cartesian) {
 	);
 }
 
-vec3 polar_to_cartesian(vec3 polar) {
-	float phi = polar.x;
-	float theta = polar.y;
-	float r = polar.z;
+vec3 spherical_to_cartesian(vec3 spherical) {
+	float phi = spherical.x;
+	float theta = spherical.y;
+	float r = spherical.z;
 
 	return vec3(
 		r * sin(phi) * sin(theta),
@@ -52,25 +50,17 @@ vec3 polar_to_cartesian(vec3 polar) {
 	);
 }
 
-vec2 project_outside(vec2 fragCoord) {
-	vec2 px = fragCoord.xy - (port / 2.);
+vec3 unproject_outside(vec2 ndc) {
+	ndc *= port / min(port.x, port.y); // aspect ratio correction
 
-	float r = min(port.x, port.y) / 2.;
-	float dist = length(px) / r;  // 0..1
+	float scale = tan(hfov/2.);
+	float dist = length(ndc);
 
-	if (is_polar) {
-		dist = 1. - dist;
-	} else {
-		dist = 2. * atan(1./dist);
-	}
+	vec3 spherical;
+	spherical.x = mod(-atan(ndc.y, ndc.x) + PI*1.5, 2.*PI) - PI;
+	spherical.y = 2. * atan(1./(dist*scale));
 
-	dist /= altitude;
-
-	vec2 polar;
-	polar.x = mod(-atan(px.y, px.x) + PI*1.5, 2.*PI) - PI;
-	polar.y = dist;
-
-	return polar;
+	return spherical;
 }
 
 vec3 rotate_xy(vec3 p, vec2 angle) {
@@ -79,21 +69,22 @@ vec3 rotate_xy(vec3 p, vec2 angle) {
 	return vec3(c.x*p.x + s.x*p.z, p.y, -s.x*p.x + c.x*p.z);
 }
 
-vec2 project_inside(vec2 fragCoord) {
+vec3 unproject_inside(vec2 ndc) {
 	float vfov = hfov * (port.y / port.x);
 	vec2 fov = vec2(hfov, vfov);
+	vec2 scale = tan(fov * 0.5);
 
-	vec2 ndc = fragCoord.xy * 2./port - 1.;
-
-    vec3 camDir = normalize(vec3(ndc.xy * tan(fov * 0.5), 1.0));  // to cartesian
+    vec3 camDir = normalize(vec3(ndc.xy * scale, 1.0));  // to cartesian
 	vec3 rotated = normalize(rotate_xy(camDir, camera));
-	return cartesian_to_polar(rotated).xy;
+	return cartesian_to_spherical(rotated);
 }
 
 void main(void) {
-	vec2 lonlat_outside = project_outside(gl_FragCoord.xy);
-	vec2 lonlat_inside = project_inside(gl_FragCoord.xy);
-	vec2 lonlat = mix(lonlat_outside, lonlat_inside, outside_inside_mix);
+	vec2 ndc = gl_FragCoord.xy * 2./port - 1.;
+
+	vec3 outside = unproject_outside(ndc);
+	vec3 inside = unproject_inside(ndc);
+	vec3 lonlat = mix(outside, inside, outside_inside_mix);
 	FragColor = textureLookup(lonlat);
 //	if (lonlat.y < 1.57) { FragColor.r = 1.0; }
 }

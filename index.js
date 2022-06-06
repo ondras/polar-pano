@@ -18,13 +18,13 @@ function pair(selector, callback) {
 	callback(node);
 }
 
-pair("[name=projection]", input => scene.projection = input.value);
-pair("[name=altitude]", input => scene.altitude = Number(input.value));
+//pair("[name=altitude]", input => scene.altitude = Number(input.value));
 
 source.addEventListener("load", e => {
 	let image = e.target;
 	let size = 2*image.naturalHeight;
 	scene.width = scene.height = size;
+	scene.height=  size/2;
 	scene.src = image.src;
 });
 
