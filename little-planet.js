@@ -53,7 +53,7 @@ function createContext(canvas) {
 	program.uniform.texLeft.set(0);
 	program.uniform.texRight.set(1);
 	program.uniform.hfov.set(120 * RAD);
-	program.uniform.outside_inside_mix.set(1);
+	program.uniform.outside_inside_mix.set(0);
 
 	let buffer = gl.createBuffer();
 	gl.bindBuffer(gl.ARRAY_BUFFER, buffer);

@@ -65,3 +65,10 @@ perspektivni projekce:
   dist = 1 / tan(fov/2)
 
   tan(fov/2) = ymax/dist
+
+
+souradne systemy:
+  FragCoord: vlevo dole 0,0; vpravo nahore width/height
+  NDC: vlevo dole -1,-1; vpravo nahore 1;1
+  kartezske souradnice: x roste doprava, y roste nahoru, z roste od pozorovatele
+  sfericke souradnice: theta (colatitude, inclination, zenith) roste dolu (severni pol = 0, jizni pol = pi); phi (zemepisna delka) roste po smeru hodinovych rucicek, 0 je pro x = 0

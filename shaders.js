@@ -46,9 +46,9 @@ vec3 polar_to_cartesian(vec3 polar) {
 	float r = polar.z;
 
 	return vec3(
-		r * cos(phi) * sin(theta),
+		r * sin(phi) * sin(theta),
 		r            * cos(theta),
-		r * sin(phi) * sin(theta)
+		r * cos(phi) * sin(theta)
 	);
 }
 
@@ -57,9 +57,14 @@ vec2 project_outside(vec2 fragCoord) {
 
 	float r = min(port.x, port.y) / 2.;
 	float dist = length(px) / r;  // 0..1
-	if (!is_polar) { dist = 2. * atan(1./dist); }
 
-	dist *= altitude;
+	if (is_polar) {
+		dist = 1. - dist;
+	} else {
+		dist = 2. * atan(1./dist);
+	}
+
+	dist /= altitude;
 
 	vec2 polar;
 	polar.x = mod(-atan(px.y, px.x) + PI*1.5, 2.*PI) - PI;
@@ -82,9 +87,7 @@ vec2 project_inside(vec2 fragCoord) {
 
     vec3 camDir = normalize(vec3(ndc.xy * tan(fov * 0.5), 1.0));  // to cartesian
 	vec3 rotated = normalize(rotate_xy(camDir, camera));
-	vec3 polar = cartesian_to_polar(rotated);
-	vec3 cart = polar_to_cartesian(polar);
-	return cartesian_to_polar(cart).xy;
+	return cartesian_to_polar(rotated).xy;
 }
 
 void main(void) {
