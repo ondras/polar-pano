@@ -63,13 +63,13 @@ vec3 spherical_to_cartesian(vec3 spherical) {
 	);
 }
 
-vec2 stereographic_inverse(vec2 polar, float fov) {
+vec3 stereographic_inverse(vec2 polar, float fov) {
 	float scale = tan(fov/2.);
 	scale = 1.;
 	float phi = polar.x;
 	float r = polar.y;
 
-	return vec2(phi, 2. * atan(1./(r*scale)));
+	return vec3(phi, 2. * atan(1./(r*scale)), 1.);
 }
 
 vec3 gnomonic_inverse_cartesian(vec2 ndc) { // ndc -> cartesian
@@ -91,12 +91,15 @@ vec3 rotate_xy(vec3 p, vec2 angle) {
 
 vec3 unproject_outside(vec2 ndc) {
 	ndc *= port / min(port.x, port.y); // aspect ratio correction
-	ndc *= tan(hfov * .5);
+	ndc *= tan(hfov * .5 / 2.);
 
 	vec2 polar = cartesian_to_polar(ndc);
-	vec2 inverted = stereographic_inverse(polar, 1.);
+	vec3 inverted = stereographic_inverse(polar, 1.);
 
-	return vec3(inverted, 1.);
+	vec3 cartesian = spherical_to_cartesian(inverted);
+	vec3 rotated = rotate_xy(cartesian, camera);
+
+	return cartesian_to_spherical(rotated);
 }
 
 vec3 unproject_inside(vec2 ndc) {
@@ -108,9 +111,9 @@ vec3 unproject_inside(vec2 ndc) {
 	vec3 inverted = gnomonic_inverse_cartesian(ndc);
 
 	// polar version:
-	vec2 polar = cartesian_to_polar(ndc);
-	vec3 spherical = gnomonic_inverse_spherical(polar);
-	inverted = spherical_to_cartesian(spherical);
+//	vec2 polar = cartesian_to_polar(ndc);
+//	vec3 spherical = gnomonic_inverse_spherical(polar);
+//	inverted = spherical_to_cartesian(spherical);
 
 	vec3 rotated = rotate_xy(inverted, camera);
 	return cartesian_to_spherical(rotated);
@@ -123,6 +126,6 @@ void main(void) {
 	vec3 inside = unproject_inside(ndc);
 	vec3 lonlat = mix(outside, inside, outside_inside_mix);
 	FragColor = textureLookup(lonlat.xy);
-//	if (lonlat.y < 1.57) { FragColor.r = 1.0; }
+	if (lonlat.x > 55. * PI / 180.) { FragColor.r = 1.0; }
 }
 `;
