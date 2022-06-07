@@ -85,6 +85,8 @@ export default class LittlePlanet extends HTMLElement {
 		this.gl = gl;
 
 		this.append(canvas);
+
+		setInterval(() => this.#render(), 16);
 	}
 
 	get canvas() { return this.gl.canvas; }
@@ -135,6 +137,8 @@ export default class LittlePlanet extends HTMLElement {
 		let min = 0.2;
 		let max = 1;
 		let sin = Math.sin(performance.now() / 1000);
+		let outside_inside_mix = (sin+1)/2;
+//		outside_inside_mix = 0;
 
 //		this.options.3 = min + (sin+1)/2 * (max - min);
 //		this.options.altitude = 0.5;
@@ -142,6 +146,7 @@ export default class LittlePlanet extends HTMLElement {
 
 		let uniforms = {
 			hfov: this.#camera.hfov * RAD,
+			outside_inside_mix,
 			camera: [this.#camera.lon*RAD, (90-this.#camera.lat)*RAD]
 		}
 

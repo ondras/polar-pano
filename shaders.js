@@ -63,6 +63,17 @@ vec3 spherical_to_cartesian(vec3 spherical) {
 	);
 }
 
+vec3 test_inverse(vec2 polar, float d) {
+	float phi = polar.x;
+	float r = polar.y;
+
+	float alpha = atan(r/(1.+d));
+	float corr = asin(d * sin(alpha));
+	float theta = PI - (alpha+corr);
+
+	return vec3(phi, theta, 1.);
+}
+
 vec3 stereographic_inverse(vec2 polar, float fov) {
 	float scale = tan(fov/2.);
 	scale = 1.;
@@ -89,9 +100,28 @@ vec3 rotate_xy(vec3 p, vec2 angle) {
 	return vec3(c.x*p.x + s.x*p.z, p.y, -s.x*p.x + c.x*p.z);
 }
 
+vec3 unproject_test(vec2 ndc) {
+	vec2 ndc_outside = ndc * port / min(port.x, port.y);
+	ndc_outside *= tan(hfov * 0.5);
+	ndc_outside *= 2.;
+
+	float vfov = hfov * (port.y / port.x);
+	vec2 fov = vec2(hfov, vfov);
+	vec2 ndc_inside = ndc * tan(fov * .5);
+
+	ndc = mix(ndc_inside, ndc_outside, outside_inside_mix);
+
+	vec2 polar = cartesian_to_polar(ndc);
+	vec3 inverted = test_inverse(polar, outside_inside_mix);
+	vec3 cartesian = spherical_to_cartesian(inverted);
+	vec3 rotated = rotate_xy(cartesian, camera);
+
+	return cartesian_to_spherical(rotated);
+}
+
 vec3 unproject_outside(vec2 ndc) {
 	ndc *= port / min(port.x, port.y); // aspect ratio correction
-	ndc *= tan(hfov * .5 / 2.);
+	ndc *= tan(hfov * .5);
 
 	vec2 polar = cartesian_to_polar(ndc);
 	vec3 inverted = stereographic_inverse(polar, 1.);
@@ -124,7 +154,9 @@ void main(void) {
 
 	vec3 outside = unproject_outside(ndc);
 	vec3 inside = unproject_inside(ndc);
-	vec3 lonlat = mix(outside, inside, outside_inside_mix);
+//	vec3 lonlat = mix(outside, inside, outside_inside_mix);
+	vec3 lonlat = unproject_test(ndc);
+//	vec3 lonlat = outside;
 	FragColor = textureLookup(lonlat.xy);
 	if (lonlat.x > 55. * PI / 180.) { FragColor.r = 1.0; }
 }
