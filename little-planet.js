@@ -53,7 +53,7 @@ function createContext(canvas) {
 	program.uniform.texLeft.set(0);
 	program.uniform.texRight.set(1);
 	program.uniform.hfov.set(120 * RAD);
-	program.uniform.outside_inside_mix.set(0);
+	program.uniform.outside_inside_mix.set(1);
 
 	let buffer = gl.createBuffer();
 	gl.bindBuffer(gl.ARRAY_BUFFER, buffer);
@@ -142,7 +142,7 @@ export default class LittlePlanet extends HTMLElement {
 
 		let uniforms = {
 			hfov: this.#camera.hfov * RAD,
-			camera: [this.#camera.lon*RAD, this.#camera.lat*RAD]
+			camera: [this.#camera.lon*RAD, (90-this.#camera.lat)*RAD]
 		}
 
 		console.log("render", uniforms);
