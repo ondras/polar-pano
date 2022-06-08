@@ -71,16 +71,14 @@ vec3 test_inverse(vec2 polar, float d) {
 	float corr = asin(d * sin(alpha));
 	float theta = PI - (alpha+corr);
 
-	return vec3(phi, theta, 1.);
+	return vec3(phi, theta, 1);
 }
 
-vec3 stereographic_inverse(vec2 polar, float fov) {
-	float scale = tan(fov/2.);
-	scale = 1.;
+vec3 stereographic_inverse(vec2 polar) {
 	float phi = polar.x;
 	float r = polar.y;
 
-	return vec3(phi, 2. * atan(1./(r*scale)), 1.);
+	return vec3(phi, 2. * atan(1./r), 1);
 }
 
 vec3 gnomonic_inverse_cartesian(vec2 ndc) { // ndc -> cartesian
@@ -91,7 +89,7 @@ vec3 gnomonic_inverse_spherical(vec2 polar) { // polar -> spherical
 	float phi = polar.x;
 	float r = polar.y;
 	float theta = PI/2. + atan(1./r);
-	return vec3(phi, theta, 1.);
+	return vec3(phi, theta, 1);
 }
 
 vec3 rotate_xy(vec3 p, vec2 angle) {
@@ -101,15 +99,10 @@ vec3 rotate_xy(vec3 p, vec2 angle) {
 }
 
 vec3 unproject_test(vec2 ndc) {
-	vec2 ndc_outside = ndc * port / min(port.x, port.y);
-	ndc_outside *= tan(hfov * 0.5);
-	ndc_outside *= 2.;
-
-	float vfov = hfov * (port.y / port.x);
-	vec2 fov = vec2(hfov, vfov);
-	vec2 ndc_inside = ndc * tan(fov * .5);
-
-	ndc = mix(ndc_inside, ndc_outside, outside_inside_mix);
+	vec2 scale_planet = (port / min(port.x, port.y)) * 2. * tan(hfov * 0.5);
+	vec2 scale_pano = tan(hfov * vec2(1, port.y/port.x) * 0.5);
+	vec2 scale = mix(scale_pano, scale_planet, outside_inside_mix);
+	ndc *= scale;
 
 	vec2 polar = cartesian_to_polar(ndc);
 	vec3 inverted = test_inverse(polar, outside_inside_mix);
@@ -120,11 +113,11 @@ vec3 unproject_test(vec2 ndc) {
 }
 
 vec3 unproject_outside(vec2 ndc) {
-	ndc *= port / min(port.x, port.y); // aspect ratio correction
-	ndc *= tan(hfov * .5);
+	vec2 scale = (port / min(port.x, port.y)) * tan(hfov * .5);
+	ndc *= scale;
 
 	vec2 polar = cartesian_to_polar(ndc);
-	vec3 inverted = stereographic_inverse(polar, 1.);
+	vec3 inverted = stereographic_inverse(polar);
 
 	vec3 cartesian = spherical_to_cartesian(inverted);
 	vec3 rotated = rotate_xy(cartesian, camera);
@@ -133,9 +126,9 @@ vec3 unproject_outside(vec2 ndc) {
 }
 
 vec3 unproject_inside(vec2 ndc) {
-	float vfov = hfov * (port.y / port.x);
-	vec2 fov = vec2(hfov, vfov);
-	ndc *= tan(fov * .5);
+	vec2 fov = hfov * vec2(1, port.y/port.x);
+	vec2 scale = tan(fov * .5);
+	ndc *= scale;
 
 	// cartesian version:
 	vec3 inverted = gnomonic_inverse_cartesian(ndc);
@@ -155,8 +148,8 @@ void main(void) {
 	vec3 outside = unproject_outside(ndc);
 	vec3 inside = unproject_inside(ndc);
 //	vec3 lonlat = mix(outside, inside, outside_inside_mix);
-	vec3 lonlat = unproject_test(ndc);
-//	vec3 lonlat = outside;
+//	vec3 lonlat = unproject_test(ndc);
+	vec3 lonlat = outside;
 	FragColor = textureLookup(lonlat.xy);
 	if (lonlat.x > 55. * PI / 180.) { FragColor.r = 1.0; }
 }
