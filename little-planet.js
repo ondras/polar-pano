@@ -13,7 +13,6 @@ function createTexture(src, gl) {
 	gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
 	gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
 	gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
-//	gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, true);
 	gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, src);
 //	gl.generateMipmap(gl.TEXTURE_2D);
 	return texture;
@@ -52,8 +51,10 @@ function createContext(canvas) {
 	Object.values(program.attribute).forEach(a => a.enable());
 	program.uniform.texLeft.set(0);
 	program.uniform.texRight.set(1);
-	program.uniform.hfov.set(120 * RAD);
-//	program.uniform.outside_inside_mix.set(0);
+
+	program.uniform.pano_hfov.set(120 * RAD);
+	program.uniform.planet_fov.set(240 * RAD);
+	program.uniform.planet_pano_mix.set(0);
 
 	let buffer = gl.createBuffer();
 	gl.bindBuffer(gl.ARRAY_BUFFER, buffer);
@@ -71,7 +72,7 @@ export default class LittlePlanet extends HTMLElement {
 	#camera = {
 		lat: 0,
 		lon: 0,
-		hfov: 120
+		hfov: 150
 	}
 
 	constructor(options) {
@@ -86,7 +87,7 @@ export default class LittlePlanet extends HTMLElement {
 
 		this.append(canvas);
 
-		//setInterval(() => this.#render(), 16);
+//		setInterval(() => this.#render(), 16);
 	}
 
 	get canvas() { return this.gl.canvas; }
@@ -137,18 +138,13 @@ export default class LittlePlanet extends HTMLElement {
 		let min = 0.2;
 		let max = 1;
 		let sin = Math.sin(performance.now() / 1000);
-		let outside_inside_mix = (sin+1)/2;
-//		outside_inside_mix = 0;
-
-//		this.options.3 = min + (sin+1)/2 * (max - min);
-//		this.options.altitude = 0.5;
-//		this.options.altitude = 4 / Math.PI;
+		let planet_pano_mix = (sin+1)/2;
+//		planet_pano_mix = 0;
 
 		let uniforms = {
-			hfov: this.#camera.hfov * RAD,
-//			outside_inside_mix,
-//			camera: [this.#camera.lon*RAD, (90-this.#camera.lat)*RAD]
-			camera: [0, 0]
+			pano_hfov: this.#camera.hfov * RAD,
+			planet_pano_mix,
+			camera: [this.#camera.lon*RAD, (90-this.#camera.lat)*RAD]
 		}
 
 		console.log("render", uniforms);

@@ -24,7 +24,6 @@ source.addEventListener("load", e => {
 	let image = e.target;
 	let size = 2*image.naturalHeight;
 	scene.width = scene.height = size;
-	scene.height = size/2;
 	scene.src = image.src;
 });
 
@@ -37,4 +36,4 @@ file.addEventListener("change", e => {
 })
 
 source.src = "sample.jpg"; // demo
-//source.src = "canvas-big.png"; // demo
+//source.src = "canvas.png"; // demo

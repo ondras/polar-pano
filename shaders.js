@@ -1,8 +1,10 @@
 export const vs = `#version 300 es
 in vec2 position;
+out vec2 ndc;
 
 void main(void) {
-	gl_Position = vec4(position, 0.0, 1.0);
+	ndc = position.xy;
+	gl_Position = vec4(ndc, 0, 1);
 }
 `;
 
@@ -12,9 +14,11 @@ precision mediump float;
 
 uniform sampler2D texLeft, texRight;
 uniform vec2 port;
-uniform float hfov;
+uniform float pano_hfov;
+uniform float planet_fov;
+uniform float planet_pano_mix;
 uniform vec2 camera;
-uniform float outside_inside_mix;
+in vec2 ndc;
 out vec4 FragColor;
 
 vec4 textureLookup(vec2 polar) {
@@ -63,7 +67,7 @@ vec3 spherical_to_cartesian(vec3 spherical) {
 	);
 }
 
-vec3 test_inverse(vec2 polar, float d) {
+vec3 hybrid_inverse(vec2 polar, float d) {
 	float phi = polar.x;
 	float r = polar.y;
 
@@ -98,14 +102,16 @@ vec3 rotate_xy(vec3 p, vec2 angle) {
 	return vec3(c.x*p.x + s.x*p.z, p.y, -s.x*p.x + c.x*p.z);
 }
 
-vec3 unproject_test(vec2 ndc) {
-	vec2 scale_planet = (port / min(port.x, port.y)) * 2. * tan(hfov * 0.5);
-	vec2 scale_pano = tan(hfov * vec2(1, port.y/port.x) * 0.5);
-	vec2 scale = mix(scale_pano, scale_planet, outside_inside_mix);
+vec3 unproject_hybrid(vec2 ndc) {
+	vec2 scale_planet = (port / min(port.x, port.y)) * 2. * tan(planet_fov * 0.25);
+	vec2 scale_pano = tan(pano_hfov * vec2(1, port.y/port.x) * 0.5);
+	vec2 scale = mix(scale_planet, scale_pano, planet_pano_mix);
 	ndc *= scale;
 
+	float d = 1. - planet_pano_mix; // 1 -> 0
+
 	vec2 polar = cartesian_to_polar(ndc);
-	vec3 inverted = test_inverse(polar, outside_inside_mix);
+	vec3 inverted = hybrid_inverse(polar, d);
 	vec3 cartesian = spherical_to_cartesian(inverted);
 	vec3 rotated = rotate_xy(cartesian, camera);
 
@@ -113,7 +119,7 @@ vec3 unproject_test(vec2 ndc) {
 }
 
 vec3 unproject_outside(vec2 ndc) {
-	vec2 scale = (port / min(port.x, port.y)) * tan(hfov * .5);
+	vec2 scale = (port / min(port.x, port.y)) * tan(planet_fov * .25);
 	ndc *= scale;
 
 	vec2 polar = cartesian_to_polar(ndc);
@@ -126,31 +132,26 @@ vec3 unproject_outside(vec2 ndc) {
 }
 
 vec3 unproject_inside(vec2 ndc) {
-	vec2 fov = hfov * vec2(1, port.y/port.x);
+	vec2 fov = pano_hfov * vec2(1, port.y/port.x);
 	vec2 scale = tan(fov * .5);
 	ndc *= scale;
 
 	// cartesian version:
 	vec3 inverted = gnomonic_inverse_cartesian(ndc);
 
-	// polar version:
-//	vec2 polar = cartesian_to_polar(ndc);
-//	vec3 spherical = gnomonic_inverse_spherical(polar);
-//	inverted = spherical_to_cartesian(spherical);
+	/* polar version:
+	vec2 polar = cartesian_to_polar(ndc);
+	vec3 spherical = gnomonic_inverse_spherical(polar);
+	inverted = spherical_to_cartesian(spherical);
+	*/
 
 	vec3 rotated = rotate_xy(inverted, camera);
 	return cartesian_to_spherical(rotated);
 }
 
 void main(void) {
-	vec2 ndc = gl_FragCoord.xy * 2./port - 1.;
-
-	vec3 outside = unproject_outside(ndc);
-	vec3 inside = unproject_inside(ndc);
-//	vec3 lonlat = mix(outside, inside, outside_inside_mix);
-//	vec3 lonlat = unproject_test(ndc);
-	vec3 lonlat = outside;
+	vec3 lonlat = unproject_hybrid(ndc);
+//	vec3 lonlat = unproject_outside(ndc);
 	FragColor = textureLookup(lonlat.xy);
-	if (lonlat.x > 55. * PI / 180.) { FragColor.r = 1.0; }
 }
 `;
