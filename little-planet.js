@@ -4,10 +4,17 @@ import { vs, fs } from "./shaders.js";
 
 const RAD = Math.PI / 180;
 const QUAD = new Float32Array([1, -1, -1, -1, 1, 1, -1, 1]);
-const ATTRIBUTES = ["src", "width", "height"];
-const DEFAULT_PANO_HFOV = 90;
-const DEFAULT_PLANET_FOV = 80;
-const HFOV_RANGE = [60, 120];
+const ATTRIBUTES = ["src", "width", "height", "inert"];
+const HFOV_RANGE = [50, 120];
+const DEFAULT_PANO_HFOV = (HFOV_RANGE[0]+HFOV_RANGE[1])/2;
+const DEFAULT_PLANET_FOV = 240;
+
+
+function pointerDistance(p1, p2) {
+	let dx = p2.x-p1.x;
+	let dy = p2.y-p1.y;
+	return Math.sqrt(dx**2, dy**2);
+}
 
 function createTexture(src, gl) {
 	let texture = gl.createTexture();
@@ -60,9 +67,9 @@ function createContext(canvas) {
 	program.uniform.texLeft.set(0);
 	program.uniform.texRight.set(1);
 
-//	program.uniform.pano_hfov.set(DEFAULT_PANO_HFOV * RAD);
-//	program.uniform.planet_fov.set(DEFAULT_PLANET_FOV * RAD);
-//	program.uniform.planet_pano_mix.set(0);
+	program.uniform.pano_hfov.set(DEFAULT_PANO_HFOV * RAD);
+	program.uniform.planet_fov.set(DEFAULT_PLANET_FOV * RAD);
+	program.uniform.planet_pano_mix.set(1);
 
 	return { gl, program };
 }
@@ -77,20 +84,28 @@ export default class LittlePlanet extends HTMLElement {
 		lon: 0,
 		hfov: DEFAULT_PANO_HFOV
 	}
+	#pointers = [];
+	#originalCamera = null;
 
-	constructor(options) {
+	constructor(options = {}) {
 		super();
 
 		const canvas = document.createElement("canvas");
 		const { gl, program } = createContext(canvas);
 
-		this.options = options;
 		this.program = program;
 		this.gl = gl;
 
 		this.append(canvas);
 
-		this.addEventListener("pointerdown", e => this.#transition());
+//		this.addEventListener("pointerdown", e => this.#transition());
+
+		this.addEventListener("pointerdown", e => this.#onPointerDown(e));
+		this.addEventListener("pointerup", e => this.#onPointerUp(e));
+		this.addEventListener("pointermove", e => this.#onPointerMove(e));
+		this.addEventListener("wheel", e => this.#onWheel(e));
+
+		Object.assign(this, options);
 	}
 
 	get canvas() { return this.gl.canvas; }
@@ -99,7 +114,68 @@ export default class LittlePlanet extends HTMLElement {
 	get camera() { return this.#camera; }
 	set camera(camera) {
 		Object.assign(this.#camera, camera);
+		this.#camera.hfov = Math.min(Math.max(this.#camera.hfov, HFOV_RANGE[0]), HFOV_RANGE[1]);
+
 		this.#changed();
+	}
+
+	#onPointerDown(e) {
+		if (this.inert) { return; }
+
+		this.#pointers.push(e);
+		if (this.#pointers.length == 1) {
+			this.#originalCamera = Object.assign({}, this.#camera);
+			this.setPointerCapture(e.pointerId);
+		}
+	}
+
+	#onPointerUp(e) {
+		if (this.inert) { return; }
+
+		if (this.#pointers.length == 1) {
+			this.releasePointerCapture(e.pointerId);
+		}
+		this.#pointers = this.#pointers.filter(pointer => pointer.pointerId != e.pointerId);
+	}
+
+	#onPointerMove(e) {
+		if (this.inert) { return; }
+
+		const pointers = this.#pointers;
+
+		switch (pointers.length) {
+			case 2: // zoom/fov
+				let oldDist = pointerDistance(pointers[0], pointers[1]);
+				pointers.forEach((p, i) => {
+					if (p.pointerId == e.pointerId) { pointers[i] = e; }
+				});
+				let newDist = pointerDistance(pointers[0], pointers[1]);
+				let diff = newDist - oldDist;
+				this.camera = { hfov: this.#camera.hfov + diff * -0.1 };
+
+			break;
+			case 1: // pan
+				let dx = e.x - this.#pointers[0].x;
+				let dy = e.y - this.#pointers[0].y;
+
+				let anglePerPixel = this.#camera.hfov / this.clientWidth;
+				let dlon = dx * anglePerPixel;
+				let dlat = dy * anglePerPixel;
+
+				this.camera = {
+					lon: this.#originalCamera.lon - dlon,
+					lat: this.#originalCamera.lat - dlat
+				}
+			break;
+		}
+	}
+
+	#onWheel(e) {
+		if (this.inert) { return; }
+
+		e.preventDefault();
+		let fovDelta = e.deltaY * 0.05;
+		this.camera = { hfov: this.#camera.hfov + fovDelta };
 	}
 
 	#transition() {
@@ -134,7 +210,6 @@ export default class LittlePlanet extends HTMLElement {
 		}
 		requestAnimationFrame(step);
 	}
-
 
 	#changed() {
 		if (this.#dirty || !this.#image) { return; }
@@ -200,6 +275,9 @@ export default class LittlePlanet extends HTMLElement {
 
 	get src() { return this.getAttribute("src"); }
 	set src(src) { return this.setAttribute("src", src); }
+
+	get inert() { return this.hasAttribute("inert"); }
+	set inert(inert) { return inert ? this.setAttribute("inert", "") : this.removeAttribute("inert"); }
 }
 
 customElements.define("little-planet", LittlePlanet);

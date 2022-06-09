@@ -25,7 +25,7 @@ source.addEventListener("load", e => scene.src = e.target.src);
 scene.addEventListener("load", e => {
 	let scene = e.target;
 //	scene.width = scene.height = scene.planetSize/4;
-	scene.width = scene.planetSize;
+	scene.width = scene.planetSize/4;
 	scene.height = scene.width * 1;
 });
 
@@ -38,5 +38,5 @@ file.addEventListener("change", e => {
 })
 
 source.src = "sample.jpg"; // demo
-source.src = "sanatorium.jpg"; // demo
-source.src = "world-graticule.png"; // demo
+//source.src = "sanatorium.jpg"; // demo
+//source.src = "world-graticule.png"; // demo

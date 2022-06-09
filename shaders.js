@@ -102,10 +102,19 @@ vec3 rotate_xy(vec3 p, vec2 angle) {
 	return vec3(c.x*p.x + s.x*p.z, p.y, -s.x*p.x + c.x*p.z);
 }
 
+vec2 scale_planet(float fov) {
+	return tan(fov * 0.25) * (port / min(port.x, port.y));
+}
+
+vec2 scale_pano(float hfov) {
+	vec2 fov = hfov * vec2(1, port.y/port.x);
+	return tan(fov * 0.5);
+}
+
 vec3 unproject_hybrid(vec2 ndc) {
-	vec2 scale_planet = (port / min(port.x, port.y)) * 2. * tan(planet_fov * 0.25);
-	vec2 scale_pano = tan(pano_hfov * vec2(1, port.y/port.x) * 0.5);
-	vec2 scale = mix(scale_planet, scale_pano, planet_pano_mix);
+	vec2 s_planet = 2.*scale_planet(planet_fov);
+	vec2 s_pano = scale_pano(pano_hfov);
+	vec2 scale = mix(s_planet, s_pano, planet_pano_mix);
 	ndc *= scale;
 
 	float d = 1. - planet_pano_mix; // 1 -> 0
@@ -119,9 +128,8 @@ vec3 unproject_hybrid(vec2 ndc) {
 }
 
 vec3 unproject_outside(vec2 ndc) {
-//	vec2 scale = (port / min(port.x, port.y)) * tan(planet_fov * .25);
-	vec2 scale = tan(pano_hfov * vec2(1, port.y/port.x) * 0.25);
-	ndc *= scale;
+	ndc *= scale_planet(planet_fov);
+//	ndc *= scale_pano(pano_hfov / 2.); uncomment to test pano-mode of the stereographical projection
 
 	vec2 polar = cartesian_to_polar(ndc);
 	vec3 inverted = stereographic_inverse(polar);
@@ -133,9 +141,7 @@ vec3 unproject_outside(vec2 ndc) {
 }
 
 vec3 unproject_inside(vec2 ndc) {
-	vec2 fov = pano_hfov * vec2(1, port.y/port.x);
-	vec2 scale = tan(fov * .5);
-	ndc *= scale;
+	ndc *= scale_pano(pano_hfov);
 
 	// cartesian version:
 	vec3 inverted = gnomonic_inverse_cartesian(ndc);
@@ -151,8 +157,7 @@ vec3 unproject_inside(vec2 ndc) {
 }
 
 void main(void) {
-//	vec3 lonlat = unproject_hybrid(ndc);
-	vec3 lonlat = unproject_inside(ndc);
+	vec3 lonlat = unproject_hybrid(ndc);
 	FragColor = textureLookup(lonlat.xy);
 }
 `;
