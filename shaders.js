@@ -17,7 +17,7 @@ uniform vec2 port;
 uniform float pano_hfov;
 uniform float planet_fov;
 uniform float planet_pano_mix;
-uniform vec2 camera;
+uniform vec2 rotation;
 in vec2 ndc;
 out vec4 FragColor;
 
@@ -122,7 +122,7 @@ vec3 unproject_hybrid(vec2 ndc) {
 	vec2 polar = cartesian_to_polar(ndc);
 	vec3 inverted = hybrid_inverse(polar, d);
 	vec3 cartesian = spherical_to_cartesian(inverted);
-	vec3 rotated = rotate_xy(cartesian, camera);
+	vec3 rotated = rotate_xy(cartesian, rotation);
 
 	return cartesian_to_spherical(rotated);
 }
@@ -135,7 +135,7 @@ vec3 unproject_outside(vec2 ndc) {
 	vec3 inverted = stereographic_inverse(polar);
 
 	vec3 cartesian = spherical_to_cartesian(inverted);
-	vec3 rotated = rotate_xy(cartesian, camera);
+	vec3 rotated = rotate_xy(cartesian, rotation);
 
 	return cartesian_to_spherical(rotated);
 }
@@ -152,7 +152,7 @@ vec3 unproject_inside(vec2 ndc) {
 	inverted = spherical_to_cartesian(spherical);
 	*/
 
-	vec3 rotated = rotate_xy(inverted, camera);
+	vec3 rotated = rotate_xy(inverted, rotation);
 	return cartesian_to_spherical(rotated);
 }
 

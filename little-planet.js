@@ -6,6 +6,7 @@ const RAD = Math.PI / 180;
 const QUAD = new Float32Array([1, -1, -1, -1, 1, 1, -1, 1]);
 const ATTRIBUTES = ["src", "width", "height", "inert"];
 const HFOV_RANGE = [50, 120];
+const LAT_RANGE = [-90, 90];
 const DEFAULT_PANO_HFOV = (HFOV_RANGE[0]+HFOV_RANGE[1])/2;
 const DEFAULT_PLANET_FOV = 240;
 
@@ -69,7 +70,7 @@ function createContext(canvas) {
 
 	program.uniform.pano_hfov.set(DEFAULT_PANO_HFOV * RAD);
 	program.uniform.planet_fov.set(DEFAULT_PLANET_FOV * RAD);
-	program.uniform.planet_pano_mix.set(1);
+	program.uniform.planet_pano_mix.set(0);
 
 	return { gl, program };
 }
@@ -115,12 +116,17 @@ export default class LittlePlanet extends HTMLElement {
 	set camera(camera) {
 		Object.assign(this.#camera, camera);
 		this.#camera.hfov = Math.min(Math.max(this.#camera.hfov, HFOV_RANGE[0]), HFOV_RANGE[1]);
+		this.#camera.lat = Math.min(Math.max(this.#camera.lat, LAT_RANGE[0]), LAT_RANGE[1]);
 
 		this.#changed();
 	}
 
 	#onPointerDown(e) {
 		if (this.inert) { return; }
+
+		// FIXME start transition
+		this.#transition();
+		return;
 
 		this.#pointers.push(e);
 		if (this.#pointers.length == 1) {
@@ -164,7 +170,7 @@ export default class LittlePlanet extends HTMLElement {
 
 				this.camera = {
 					lon: this.#originalCamera.lon - dlon,
-					lat: this.#originalCamera.lat - dlat
+					lat: this.#originalCamera.lat + dlat
 				}
 			break;
 		}
@@ -180,8 +186,8 @@ export default class LittlePlanet extends HTMLElement {
 
 	#transition() {
 		const duration = 2000;
-		const descendStop = 0.8;
-		const rotateStart = 0.5;
+		const descendStop = 0.9;
+		const rotateStart = 0.6;
 		let startTime = performance.now();
 
 		let step = () => {
@@ -198,11 +204,11 @@ export default class LittlePlanet extends HTMLElement {
 			}
 
 			if (phase < rotateStart) {
-				uniforms.camera = [0, 0];
+				uniforms.rotation = [0, 0];
 			} else {
 				let frac = (phase-rotateStart)/(1-rotateStart);
 				frac = frac*frac;
-				uniforms.camera = [0, frac*90*RAD];
+				uniforms.rotation = [0, frac*90*RAD];
 			}
 
 			this.#render(uniforms);
@@ -222,11 +228,9 @@ export default class LittlePlanet extends HTMLElement {
 
 		let uniforms = {
 			pano_hfov: this.#camera.hfov * RAD,
-			camera: [this.#camera.lon*RAD, (90-this.#camera.lat)*RAD]
+			rotation: [this.#camera.lon*RAD, (90+this.#camera.lat)*RAD]
 		}
 		Object.assign(uniforms, forceUniforms);
-
-		console.log("render", uniforms);
 
 		for (let name in uniforms) {
 			program.uniform[name] && program.uniform[name].set(uniforms[name]);
@@ -249,7 +253,6 @@ export default class LittlePlanet extends HTMLElement {
 				let port = [canvas.width, canvas.height];
 				gl.viewport(0, 0, ...port);
 				program.uniform.port.set(port);
-				console.log("port", port)
 				this.#changed();
 			break;
 
