@@ -86,7 +86,7 @@ vec3 stereographic_inverse(vec2 polar) {
 }
 
 vec3 gnomonic_inverse_cartesian(vec2 ndc) { // ndc -> cartesian
-    return normalize(vec3(ndc.x, -1.0, ndc.y));
+    return normalize(vec3(ndc.x, -1, ndc.y));
 }
 
 vec3 gnomonic_inverse_spherical(vec2 polar) { // polar -> spherical
@@ -119,7 +119,8 @@ vec3 unproject_hybrid(vec2 ndc) {
 }
 
 vec3 unproject_outside(vec2 ndc) {
-	vec2 scale = (port / min(port.x, port.y)) * tan(planet_fov * .25);
+//	vec2 scale = (port / min(port.x, port.y)) * tan(planet_fov * .25);
+	vec2 scale = tan(pano_hfov * vec2(1, port.y/port.x) * 0.25);
 	ndc *= scale;
 
 	vec2 polar = cartesian_to_polar(ndc);
@@ -150,8 +151,8 @@ vec3 unproject_inside(vec2 ndc) {
 }
 
 void main(void) {
-	vec3 lonlat = unproject_hybrid(ndc);
-//	vec3 lonlat = unproject_outside(ndc);
+//	vec3 lonlat = unproject_hybrid(ndc);
+	vec3 lonlat = unproject_inside(ndc);
 	FragColor = textureLookup(lonlat.xy);
 }
 `;

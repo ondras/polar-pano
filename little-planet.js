@@ -5,6 +5,9 @@ import { vs, fs } from "./shaders.js";
 const RAD = Math.PI / 180;
 const QUAD = new Float32Array([1, -1, -1, -1, 1, 1, -1, 1]);
 const ATTRIBUTES = ["src", "width", "height"];
+const DEFAULT_PANO_HFOV = 90;
+const DEFAULT_PLANET_FOV = 80;
+const HFOV_RANGE = [60, 120];
 
 function createTexture(src, gl) {
 	let texture = gl.createTexture();
@@ -49,17 +52,17 @@ function createContext(canvas) {
 	program.use();
 
 	Object.values(program.attribute).forEach(a => a.enable());
-	program.uniform.texLeft.set(0);
-	program.uniform.texRight.set(1);
-
-	program.uniform.pano_hfov.set(120 * RAD);
-	program.uniform.planet_fov.set(240 * RAD);
-	program.uniform.planet_pano_mix.set(0);
-
 	let buffer = gl.createBuffer();
 	gl.bindBuffer(gl.ARRAY_BUFFER, buffer);
 	gl.bufferData(gl.ARRAY_BUFFER, QUAD, gl.STATIC_DRAW);
 	program.attribute.position.pointer(2, gl.FLOAT, false, 0, 0);
+
+	program.uniform.texLeft.set(0);
+	program.uniform.texRight.set(1);
+
+//	program.uniform.pano_hfov.set(DEFAULT_PANO_HFOV * RAD);
+//	program.uniform.planet_fov.set(DEFAULT_PLANET_FOV * RAD);
+//	program.uniform.planet_pano_mix.set(0);
 
 	return { gl, program };
 }
@@ -68,11 +71,11 @@ export default class LittlePlanet extends HTMLElement {
 	static observedAttributes = ATTRIBUTES;
 
 	#dirty = false;
-	#loaded = false;
+	#image = null;
 	#camera = {
 		lat: 0,
 		lon: 0,
-		hfov: 150
+		hfov: DEFAULT_PANO_HFOV
 	}
 
 	constructor(options) {
@@ -87,10 +90,79 @@ export default class LittlePlanet extends HTMLElement {
 
 		this.append(canvas);
 
-//		setInterval(() => this.#render(), 16);
+		this.addEventListener("pointerdown", e => this.#transition());
 	}
 
 	get canvas() { return this.gl.canvas; }
+	get planetSize() { return this.#image ? 2*this.#image.naturalHeight : null; }
+
+	get camera() { return this.#camera; }
+	set camera(camera) {
+		Object.assign(this.#camera, camera);
+		this.#changed();
+	}
+
+	#transition() {
+		const duration = 2000;
+		const descendStop = 0.8;
+		const rotateStart = 0.5;
+		let startTime = performance.now();
+
+		let step = () => {
+			let time = performance.now();
+			let phase = (time-startTime) / duration;
+
+			let uniforms = {};
+
+			if (phase < descendStop) {
+				let frac = phase / descendStop;
+				uniforms.planet_pano_mix = frac;
+			} else {
+				uniforms.planet_pano_mix = 1;
+			}
+
+			if (phase < rotateStart) {
+				uniforms.camera = [0, 0];
+			} else {
+				let frac = (phase-rotateStart)/(1-rotateStart);
+				frac = frac*frac;
+				uniforms.camera = [0, frac*90*RAD];
+			}
+
+			this.#render(uniforms);
+			if (phase < 1) { requestAnimationFrame(step); }
+		}
+		requestAnimationFrame(step);
+	}
+
+
+	#changed() {
+		if (this.#dirty || !this.#image) { return; }
+		this.#dirty = true;
+		requestAnimationFrame(() => this.#render());
+	}
+
+	#render(forceUniforms = {}) {
+		const { gl, program } = this;
+
+		let uniforms = {
+			pano_hfov: this.#camera.hfov * RAD,
+			camera: [this.#camera.lon*RAD, (90-this.#camera.lat)*RAD]
+		}
+		Object.assign(uniforms, forceUniforms);
+
+		console.log("render", uniforms);
+
+		for (let name in uniforms) {
+			program.uniform[name] && program.uniform[name].set(uniforms[name]);
+		}
+
+		gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+
+		this.#dirty = false;
+	}
+
+	// dom/attribute reflection
 
 	async attributeChangedCallback(name, oldValue, newValue) {
 		const { gl, program, canvas } = this;
@@ -102,15 +174,15 @@ export default class LittlePlanet extends HTMLElement {
 				let port = [canvas.width, canvas.height];
 				gl.viewport(0, 0, ...port);
 				program.uniform.port.set(port);
+				console.log("port", port)
 				this.#changed();
 			break;
 
 			case "src":
-				this.#loaded = false;
+				this.#image = null;
 				try {
-					let image = await loadImage(newValue);
-					createTextures(image, gl);
-					this.#loaded = true;
+					this.#image = await loadImage(newValue);
+					createTextures(this.#image, gl);
 					this.#render();
 					this.dispatchEvent(new CustomEvent("load"));
 				} catch (e) {
@@ -119,46 +191,6 @@ export default class LittlePlanet extends HTMLElement {
 			break;
 		}
 	}
-
-	get camera() { return this.#camera; }
-	set camera(camera) {
-		Object.assign(this.#camera, camera);
-		this.#changed();
-	}
-
-	#changed() {
-		if (this.#dirty || !this.#loaded) { return; }
-		this.#dirty = true;
-		requestAnimationFrame(() => this.#render());
-	}
-
-	#render() {
-		const { gl, program } = this;
-
-		let min = 0.2;
-		let max = 1;
-		let sin = Math.sin(performance.now() / 1000);
-		let planet_pano_mix = (sin+1)/2;
-//		planet_pano_mix = 0;
-
-		let uniforms = {
-			pano_hfov: this.#camera.hfov * RAD,
-			planet_pano_mix,
-			camera: [this.#camera.lon*RAD, (90-this.#camera.lat)*RAD]
-		}
-
-		console.log("render", uniforms);
-
-		for (let name in uniforms) {
-			program.uniform[name].set(uniforms[name]);
-		}
-
-		gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
-
-		this.#dirty = false;
-	}
-
-	// dom/attribute reflection
 
 	get width() { return this.canvas.getAttribute("width"); }
 	set width(width) { return this.setAttribute("width", width); }

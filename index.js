@@ -20,11 +20,13 @@ function pair(selector, callback) {
 
 //pair("[name=altitude]", input => scene.altitude = Number(input.value));
 
-source.addEventListener("load", e => {
-	let image = e.target;
-	let size = 2*image.naturalHeight;
-	scene.width = scene.height = size;
-	scene.src = image.src;
+source.addEventListener("load", e => scene.src = e.target.src);
+
+scene.addEventListener("load", e => {
+	let scene = e.target;
+//	scene.width = scene.height = scene.planetSize/4;
+	scene.width = scene.planetSize;
+	scene.height = scene.width * 1;
 });
 
 [...target.querySelectorAll("input")].forEach(i => i.addEventListener("input", updateCamera));
@@ -36,4 +38,5 @@ file.addEventListener("change", e => {
 })
 
 source.src = "sample.jpg"; // demo
-//source.src = "canvas.png"; // demo
+source.src = "sanatorium.jpg"; // demo
+source.src = "world-graticule.png"; // demo
