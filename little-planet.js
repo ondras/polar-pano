@@ -4,7 +4,6 @@ import { vs, fs } from "./shaders.js";
 
 const RAD = Math.PI / 180;
 const QUAD = new Float32Array([1, -1, -1, -1, 1, 1, -1, 1]);
-const ATTRIBUTES = ["src", "width", "height", "inert"];
 const HFOV_RANGE = [50, 120];
 const LAT_RANGE = [-90, 90];
 const DEFAULT_PANO_HFOV = (HFOV_RANGE[0]+HFOV_RANGE[1])/2;
@@ -70,14 +69,11 @@ function createContext(canvas) {
 
 	program.uniform.pano_hfov.set(DEFAULT_PANO_HFOV * RAD);
 	program.uniform.planet_fov.set(DEFAULT_PLANET_FOV * RAD);
-	program.uniform.planet_pano_mix.set(0);
 
 	return { gl, program };
 }
 
 export default class LittlePlanet extends HTMLElement {
-	static observedAttributes = ATTRIBUTES;
-
 	#dirty = false;
 	#image = null;
 	#camera = {
@@ -87,6 +83,7 @@ export default class LittlePlanet extends HTMLElement {
 	}
 	#pointers = [];
 	#originalCamera = null;
+	#mode = "planet";
 
 	constructor(options = {}) {
 		super();
@@ -96,6 +93,7 @@ export default class LittlePlanet extends HTMLElement {
 
 		this.program = program;
 		this.gl = gl;
+		this.inert = false;
 
 		this.append(canvas);
 
@@ -105,6 +103,12 @@ export default class LittlePlanet extends HTMLElement {
 		this.addEventListener("pointerup", e => this.#onPointerUp(e));
 		this.addEventListener("pointermove", e => this.#onPointerMove(e));
 		this.addEventListener("wheel", e => this.#onWheel(e));
+
+		if (this.hasAttribute("mode")) { options.mode = this.getAttribute("mode"); }
+		if (this.hasAttribute("src")) { options.src = this.getAttribute("src"); }
+		if (this.hasAttribute("inert")) { options.inert = this.getAttribute("inert"); }
+		options.width = Number(this.getAttribute("width")) || canvas.width;
+		options.height = Number(this.getAttribute("height")) || canvas.height;
 
 		Object.assign(this, options);
 	}
@@ -117,16 +121,20 @@ export default class LittlePlanet extends HTMLElement {
 		Object.assign(this.#camera, camera);
 		this.#camera.hfov = Math.min(Math.max(this.#camera.hfov, HFOV_RANGE[0]), HFOV_RANGE[1]);
 		this.#camera.lat = Math.min(Math.max(this.#camera.lat, LAT_RANGE[0]), LAT_RANGE[1]);
+		this.#changed();
+	}
 
+	get mode() { return this.#mode; }
+	set mode(mode) {
+		this.#mode = (mode == "pano" ? "pano" : "planet");
+		this.program.uniform.planet_pano_mix = (this.#mode == "planet" ? 1 : 0);
 		this.#changed();
 	}
 
 	#onPointerDown(e) {
 		if (this.inert) { return; }
 
-		// FIXME start transition
-		this.#transition();
-		return;
+		if (this.#mode == "planet") { return this.#transition(); }
 
 		this.#pointers.push(e);
 		if (this.#pointers.length == 1) {
@@ -177,7 +185,7 @@ export default class LittlePlanet extends HTMLElement {
 	}
 
 	#onWheel(e) {
-		if (this.inert) { return; }
+		if (this.#mode == "planet" || this.inert) { return; }
 
 		e.preventDefault();
 		let fovDelta = e.deltaY * 0.05;
@@ -185,6 +193,9 @@ export default class LittlePlanet extends HTMLElement {
 	}
 
 	#transition() {
+		let oldInert = this.inert;
+		this.inert = true;
+
 		const duration = 2000;
 		const descendStop = 0.9;
 		const rotateStart = 0.6;
@@ -212,8 +223,14 @@ export default class LittlePlanet extends HTMLElement {
 			}
 
 			this.#render(uniforms);
-			if (phase < 1) { requestAnimationFrame(step); }
+			if (phase < 1) {
+				requestAnimationFrame(step);
+			} else {
+				this.#mode = "pano";
+				this.inert = oldInert;
+			}
 		}
+
 		requestAnimationFrame(step);
 	}
 
@@ -221,6 +238,15 @@ export default class LittlePlanet extends HTMLElement {
 		if (this.#dirty || !this.#image) { return; }
 		this.#dirty = true;
 		requestAnimationFrame(() => this.#render());
+	}
+
+	#syncSize() {
+		const { canvas, program, gl } = this;
+
+		let port = [canvas.width, canvas.height];
+		gl.viewport(0, 0, ...port);
+		program.uniform.port.set(port);
+		this.#changed();
 	}
 
 	#render(forceUniforms = {}) {
@@ -241,46 +267,35 @@ export default class LittlePlanet extends HTMLElement {
 		this.#dirty = false;
 	}
 
-	// dom/attribute reflection
-
-	async attributeChangedCallback(name, oldValue, newValue) {
-		const { gl, program, canvas } = this;
-
-		switch (name) {
-			case "width":
-			case "height":
-				canvas.setAttribute(name, newValue);
-				let port = [canvas.width, canvas.height];
-				gl.viewport(0, 0, ...port);
-				program.uniform.port.set(port);
-				this.#changed();
-			break;
-
-			case "src":
-				this.#image = null;
-				try {
-					this.#image = await loadImage(newValue);
-					createTextures(this.#image, gl);
-					this.#render();
-					this.dispatchEvent(new CustomEvent("load"));
-				} catch (e) {
-					this.dispatchEvent(new CustomEvent("error", {detail:e}));
-				}
-			break;
-		}
+	get width() { return this.canvas.width; }
+	set width(width) {
+		this.canvas.width = width;
+		this.#syncSize();
 	}
 
-	get width() { return this.canvas.getAttribute("width"); }
-	set width(width) { return this.setAttribute("width", width); }
+	get height() { return this.canvas.height; }
+	set height(height) {
+		this.canvas.height = height;
+		this.#syncSize();
+	}
 
-	get height() { return this.canvas.getAttribute("height"); }
-	set height(height) { return this.setAttribute("height", height); }
+	get src() { return this.#image.src; }
+	set src(src) {
+		this.#load(src);
+	}
 
-	get src() { return this.getAttribute("src"); }
-	set src(src) { return this.setAttribute("src", src); }
+	async #load(src) {
+		this.#image = null;
 
-	get inert() { return this.hasAttribute("inert"); }
-	set inert(inert) { return inert ? this.setAttribute("inert", "") : this.removeAttribute("inert"); }
+		try {
+			this.#image = await loadImage(src);
+			createTextures(this.#image, this.gl);
+			this.#render();
+			this.dispatchEvent(new CustomEvent("load"));
+		} catch (e) {
+			this.dispatchEvent(new CustomEvent("error", {detail:e}));
+		}
+	}
 }
 
 customElements.define("little-planet", LittlePlanet);
